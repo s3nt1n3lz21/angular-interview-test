@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import * as d3 from 'd3';
 import { event as d3Event } from 'd3-selection';
 import * as R from 'ramda';
+import { ApiService } from './services/api.service';
 
 function getScoreColour(score: number | null, defaultColor = 'LightGray') {
     if (R.isNil(score) || Number.isNaN(score) || score > 10) {
@@ -21,7 +21,6 @@ function getScoreColour(score: number | null, defaultColor = 'LightGray') {
 }
 
 
-
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -33,9 +32,16 @@ export class AppComponent {
   private countryData;
   public countryDetails: string | undefined;
 
-  constructor(private readonly http: HttpClient) {
-    this.http.get<any>('./assets/data.json').subscribe(x => {
-      this.countryData = x;
+  constructor(private readonly apiService: ApiService) {
+    this.apiService.getCountries().subscribe(x => {
+      let entitledCountries = {}
+      const keys = Object.keys(x);
+      keys.forEach((key) => {
+        if (x[key].entitled) {
+          entitledCountries[key] = x[key]
+        }
+      })
+      this.countryData = entitledCountries
       this.loadGlobe();
     })
   }
@@ -98,19 +104,33 @@ export class AppComponent {
         .selectAll('path')
         .data(d.features)
         .enter().append('path')
-        .attr('class', (d: any) => 'country_' + d.properties.ISO_A2)
+        .attr('class', (d: any) => 'country_' + this.getValidISOA2(d))
         .attr('d', path)
-        .attr('fill', (d: any) => getScoreColour(this.getCountryScore(d.properties.ISO_A2)))
+        .attr('fill', (d: any) => getScoreColour(this.getCountryScore(this.getValidISOA2(d))))
         .style('stroke', 'black')
         .style('stroke-width', 0.3)
         .on('mouseleave', (d: any) => this.clearDetails())
-        .on('mouseover', (d: any) => this.showDetails(d.properties.ISO_A2, d.properties.NAME));
+        .on('mouseover', (d: any) => this.showDetails(this.getValidISOA2(d), d.properties.NAME));
     });
 
   }
 
+  private getValidISOA2(data: any) {
+    if (data.properties.ISO_A2 != -99) {
+      return data.properties.ISO_A2
+    }
+    if (data.properties.WB_A2 != -99) {
+      return data.properties.WB_A2
+    }
+    if (data.properties.SOV_A3 != -99) {
+      return data.properties.SOV_A3
+    } else {
+      return data.properties.NAME
+    }
+  }
+
   private getCountryScore(countryCode: string): number | undefined {
-    const country = this.countryData[countryCode];
+    const country = this.countryData[countryCode.slice(0,2)];
     return country ? country.score : undefined;
   }
 
@@ -127,3 +147,17 @@ export class AppComponent {
     this.countryDetails = `${countryName}: ${country.score.toFixed(2)}`;
   }
 }
+
+// POSSIBLE IMPROVEMENTS:
+// - Create interface datatypes for the Countries and adminCountries in a models folder
+// - Figure out a better way to handle cases when the data is undefined/-99 and add more fallbacks
+// - Possibly load the adminCountries by calling an API 
+// - Split out the D3.js code for the world out into its own component that can be reused and passed different data
+// - Write some tests to check each functions does what its supposed to
+// - Add parameters to allow the user to change the colours/theme
+// - Improve the styles/increase the font of the details in the top right
+// - Highlight/improve the styles of the country on hover
+// - Consider using tooltips for the details on hover, e.g. show country name and score
+// - Provide a key/legend as to what the different colours mean
+// - Cache data using an interceptor
+// - Make countries clickable and then route to details about the country

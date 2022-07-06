@@ -1,20 +1,23 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, waitForAsync } from '@angular/core/testing';
 import { AppComponent } from './app.component';
+import { configureTestingModule } from './testing-utils';
 
 describe('AppComponent', () => {
   let component: AppComponent;
   let fixture: ComponentFixture<AppComponent>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      declarations: [
-        AppComponent
-      ],
+  beforeEach(waitForAsync(() => {
+    configureTestingModule({
+        declarations: [
+          AppComponent,
+        ]
     }).compileComponents();
+  }));
 
-    fixture = TestBed.createComponent(AppComponent);
-    component = fixture.componentInstance;
-
+  beforeEach(() => {
+      fixture = TestBed.createComponent(AppComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
   });
 
   it('should create the app', () => {
@@ -24,7 +27,6 @@ describe('AppComponent', () => {
   it(`country details box should have correct title`, () => {
     const scoreBox: HTMLElement = fixture.nativeElement.querySelector('.country-details');
     
-    expect(scoreBox.textContent).toEqual(`Client's Risk Portfolio`);
+    expect(scoreBox.textContent.trim()).toEqual(`Client's Risk Portfolio`);
   });
-
 });
